@@ -17,6 +17,10 @@ Just a C compiler :)
 # Build
 ```
 gcc -std=gnu17 -Wall -Wextra -O2 ./game.c -o game
+```
+
+# Play
+```
 ./game
 ```
 
