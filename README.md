@@ -24,67 +24,6 @@ gcc -std=gnu17 -Wall -Wextra -O2 ./game.c -o game
 ./game
 ```
 
-# General Game Requirements
-## Display Graphics
-- Low resolution
-- ASCII characters (subpixels, textures)
-- Colors (foreground, background)
-- Move the cursor's position freely
-
-## Input Handling
-- Canonical Mode - line based
-- Non-Canonical Input Mode - More control over input
-- RAW Input Mode
-- Turn off Echo
-
-## Sound and Music:
-- :(
-- Terminal Bell - NO
-
-# Toolbox
-- man 3 termios
-- ANSII Escape Codes - https://en.m.wikipedia.org/wiki/ANSI_escape_code
-
-# ANSI Escape Codes
-## FG Color
-Paremeters: R G B
-```
-printf "\x1B[:38;2;R;G;Bm"
-```
-
-## BG Color
-Parameters: R G B
-```
-printf "\x1B[48;2;R;G;Bm"
-```
-
-## Moving the cursor
-Move Cursor To (x, y) - Upper Left Corner is (1, 1)
-Paremeters: X Y
-```
-printf "\x1B[Y;XH"
-```
-
-## Clear Screen
-```
-printf "\x1B[2J"
-```
-
-## Hide Cursor
-```
-printf "\x1B[?25l"
-```
-
-## Show Cursor
-```
-printf "\x1B[?25h"
-```
-
-## Reset Colors
-```
-printf "\x1B[m"
-```
-
 # Implementation Stages
 ## Stage 1
 - Non-canonical input mode
@@ -167,4 +106,65 @@ In the scenario below, the Player can push the rocks right or left.
 ```
 .. O@O ..
 .........
+```
+
+# General Game Requirements
+## Display Graphics
+- Low resolution
+- ASCII characters (subpixels, textures)
+- Colors (foreground, background)
+- Move the cursor's position freely
+
+## Input Handling
+- Canonical Mode - line based
+- Non-Canonical Input Mode - More control over input
+- RAW Input Mode
+- Turn off Echo
+
+## Sound and Music:
+- :(
+- Terminal Bell - NO
+
+# Toolbox
+- man 3 termios
+- ANSII Escape Codes - https://en.m.wikipedia.org/wiki/ANSI_escape_code
+
+# ANSI Escape Codes
+## FG Color
+Paremeters: R G B
+```
+printf "\x1B[:38;2;R;G;Bm"
+```
+
+## BG Color
+Parameters: R G B
+```
+printf "\x1B[48;2;R;G;Bm"
+```
+
+## Moving the cursor
+Move Cursor To (x, y) - Upper Left Corner is (1, 1)
+Paremeters: X Y
+```
+printf "\x1B[Y;XH"
+```
+
+## Clear Screen
+```
+printf "\x1B[2J"
+```
+
+## Hide Cursor
+```
+printf "\x1B[?25l"
+```
+
+## Show Cursor
+```
+printf "\x1B[?25h"
+```
+
+## Reset Colors
+```
+printf "\x1B[m"
 ```
