@@ -1,0 +1,397 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
+#include <termios.h>
+#include <signal.h>
+#include <string.h>
+
+#define MAX_X 60
+#define MAX_Y 26
+
+typedef struct {
+    int key;
+    int pos_x;
+    int pos_y;
+    int gems_collected;
+    int dead;
+    int won;
+    char old_screen[MAX_Y][MAX_X];
+    char screen[MAX_Y][MAX_X];
+} GameState;
+
+static struct termios old_termios, new_termios;
+
+void reset_terminal() {
+    printf("\e[m"); // reset color changes
+    printf("\e[?25h"); // show cursor
+    printf("\e[%d;%dH\n", MAX_Y + 3, MAX_X); // move cursor after game board
+    fflush(stdout);
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_termios);
+}
+
+void configure_terminal() {
+    tcgetattr(STDIN_FILENO, &old_termios);
+	new_termios = old_termios; // save it to be able to reset on exit
+    
+    new_termios.c_lflag &= ~(ICANON | ECHO); // turn off echo + non-canonical mode
+    new_termios.c_cc[VMIN] = 0;
+    new_termios.c_cc[VTIME] = 0;
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_termios);
+
+    printf("\e[?25l"); // hide cursor
+    atexit(reset_terminal);
+}
+
+static int exit_loop;
+
+void signal_handler(__attribute__((unused)) int signum) {
+    exit_loop = 1;
+}
+
+int read_key(char* buf, int k) {
+    if (buf[k] == '\033' && buf[k + 1] == '[') {
+		switch (buf[k + 2]) {
+			case 'A': return 1; // UP
+			case 'B': return 2; // DOWN
+			case 'C': return 3; // RIGHT
+			case 'D': return 4; // LEFT
+		}
+	}
+	return 0;
+}
+
+void read_input(GameState* state) {
+   	char buf[4096]; // maximum input buffer
+	int n = read(STDIN_FILENO, buf, sizeof(buf));
+	int final_key = 0;
+    // it's okay if we miss some keys
+    // we will correct it on next frame
+	for (int k = 0; k <= n - 3; k += 3) {
+		int key = read_key(buf, k);
+		if (key == 0) continue;
+		final_key = key;
+	}
+    state->key = final_key;
+}
+
+void handle_player(GameState* state) {
+	switch (state->key) {
+	case 1:
+        switch (state->screen[state->pos_y - 1][state->pos_x]) {
+            case '$':
+                state->gems_collected++; // fallthrough
+            case ' ':
+            case '.':
+                state->screen[state->pos_y][state->pos_x] = ' ';
+                state->screen[state->pos_y - 1][state->pos_x] = '@';
+                --state->pos_y;
+                break;
+            case 'E':
+                state->won = 1;
+                break;
+            case 'o':
+            case 'S':
+                state->dead = 1;
+                break;
+            default:
+                break;
+        }
+        break;
+    case 2:
+        switch (state->screen[state->pos_y + 1][state->pos_x]) {
+            case '$':
+                state->gems_collected++; // fallthrough
+            case ' ':
+            case '.':
+                state->screen[state->pos_y][state->pos_x] = ' ';
+                state->screen[state->pos_y + 1][state->pos_x] = '@';
+                ++state->pos_y;
+                break;
+            case 'E':
+                state->won = 1;
+                break;
+            default:
+                break;
+        }
+        break;
+    case 3:
+        switch (state->screen[state->pos_y][state->pos_x + 1]) {
+            case '$':
+                state->gems_collected++; // fallthrough
+            case ' ':
+            case '.':
+                state->screen[state->pos_y][state->pos_x] = ' ';
+                state->screen[state->pos_y][state->pos_x + 1] = '@';
+                ++state->pos_x;
+                break;
+            case 'E':
+                state->won = 1;
+                break;
+            case 'O':
+                if (state->screen[state->pos_y][state->pos_x + 2] == ' ') {
+                    state->screen[state->pos_y][state->pos_x + 2] = 'O';
+                    state->screen[state->pos_y][state->pos_x] = ' ';
+                    state->screen[state->pos_y][state->pos_x + 1] = '@';
+                    ++state->pos_x;
+                }
+                break;
+            default:
+                break;
+        }
+        break;
+    case 4:
+        switch (state->screen[state->pos_y][state->pos_x - 1]) {
+            case '$':
+                state->gems_collected++; // fallthrough
+            case ' ':
+            case '.':
+                state->screen[state->pos_y][state->pos_x] = ' ';
+                state->screen[state->pos_y][state->pos_x - 1] = '@';
+                --state->pos_x;
+                break;
+            case 'E':
+                state->won = 1;
+                break;
+            case 'O':
+                if (state->screen[state->pos_y][state->pos_x - 2] == ' ') {
+                    state->screen[state->pos_y][state->pos_x - 2] = 'O';
+                    state->screen[state->pos_y][state->pos_x] = ' ';
+                    state->screen[state->pos_y][state->pos_x - 1] = '@';
+                    --state->pos_x;
+                }
+                break;
+            default:
+                break;
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+void handle_rocks_gems(GameState* state, int x, int y) {
+    int gem = state->screen[y][x] == '$';
+    if (state->screen[y + 1][x] == ' ') { // start to fall
+        if (gem) {
+            state->screen[y][x] = 'S';
+        } else {
+            state->screen[y][x] = 'o';
+        }
+        return;
+    }
+    if (state->screen[y + 1][x] == 'O' || state->screen[y + 1][x] == '$') {
+        // check left
+        if (state->screen[y][x - 1] == ' ' && state->screen[y + 1][x - 1] == ' ') {
+            if (gem) {
+                state->screen[y][x] = 'S';
+            } else {
+                state->screen[y][x] = 'o';
+            }
+        }
+        // check right
+        if (state->screen[y][x + 1] == ' ' && state->screen[y + 1][x + 1] == ' ') {
+            if (gem) {
+                state->screen[y][x] = 'S';
+            } else {
+                state->screen[y][x] = 'o';
+            }
+        }
+    }
+}
+
+void handle_falling_rocks_gems(GameState* state, int x, int y) {
+    int gem = state->screen[y][x] == 'S';
+    if (state->screen[y + 1][x] == ' ') {
+        state->screen[y][x] = ' ';
+        if (gem) {
+            state->screen[y + 1][x] = 'S';
+        } else {
+            state->screen[y + 1][x] = 'o';
+        }
+        return;
+    }
+    if (state->screen[y + 1][x] == 'O' || state->screen[y + 1][x] == '$') {
+        // check left
+        if (state->screen[y][x - 1] == ' ' && state->screen[y + 1][x - 1] == ' ') {
+            state->screen[y][x] = ' ';
+            if (gem) {
+                state->screen[y][x - 1] = 'S';
+            } else {
+                state->screen[y][x - 1] = 'o';
+            }
+            return;
+        }
+        // check right
+        if (state->screen[y][x + 1] == ' ' && state->screen[y + 1][x + 1] == ' ') {
+            state->screen[y][x] = ' ';
+            if (gem) {
+                state->screen[y][x + 1] = 'S';
+            } else {
+                state->screen[y][x + 1] = 'o';
+            }
+            return;
+        }
+    }
+    if (state->screen[y + 1][x] == 'o' || state->screen[y + 1][x] == 'S') return;
+    if (state->screen[y + 1][x] == '@') {
+        state->dead = 1;
+    }
+    if (gem) {
+        state->screen[y][x] = '$';
+    } else {
+        state->screen[y][x] = 'O';
+    }
+}
+
+void update_all_elements(GameState* state) {
+    // We iterate over the screen from bottom to top from right to left
+    for (int j = MAX_Y - 1; j != 0; --j) {
+        for (int i = MAX_X - 2; i != 0; --i) {
+            switch (state->screen[j][i]) {
+                case 'O':
+                case '$':
+                    handle_rocks_gems(state, i, j);
+                    break;
+                case 'o':
+                case 'S':
+                    handle_falling_rocks_gems(state, i, j);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+}
+
+void update(GameState* state) {
+    memcpy(state->screen, state->old_screen, sizeof(state->screen));
+    handle_player(state);
+    update_all_elements(state);
+}
+
+void render(GameState* state) {
+    for (int j = 0; j < MAX_Y; ++j) {
+        for (int i = 0; i < MAX_X; ++i) {
+            if (state->old_screen[j][i] != state->screen[j][i]) {
+                printf("\e[%d;%dH", j + 1, i + 1); // move cursor
+                printf("%c", state->screen[j][i]);
+            }
+        }
+    }
+    fflush(stdout);
+}
+
+void find_player_position(GameState* state) {
+    for (int j = 0; j < MAX_Y; ++j) {
+        for (int i = 0; i < MAX_X; ++i) {
+            if (state->screen[j][i] == '@') {
+                state->pos_x = i;
+                state->pos_y = j;
+                return;
+            }
+        }
+    }
+}
+
+void load_level(GameState* state) {
+    FILE* f = fopen("./level_1.txt", "r");
+    if (!f) {
+        fprintf(stderr, "Failed to open level_1.txt");
+        exit(EXIT_FAILURE);
+    }
+    if (fread(state->screen, 1, MAX_X * MAX_Y, f) != MAX_X * MAX_Y) {
+        fprintf(stderr, "Failed to read level_1.txt");
+        fclose(f);
+        exit(EXIT_FAILURE);
+    }
+    render(state); // To display the level
+    find_player_position(state);
+    memcpy(state->old_screen, state->screen, sizeof(state->screen));
+    fclose(f);
+}
+
+void print_end_message(GameState* state) {
+    printf("\e[%d;%dH", MAX_Y + 2, 1); // move cursor
+    if (state->dead) {
+        printf("You died! Better luck next time!");
+    }
+    if (state->won) {
+        printf("You won! You collected %d gems!", state->gems_collected);
+    }
+}
+
+// Lower is faster
+#define SPEED 0.1
+
+int main() {
+    configure_terminal();
+
+    signal(SIGINT, signal_handler);
+
+   	struct timespec req = {};
+	struct timespec rem = {};
+
+    GameState state = {
+        .pos_x = 5,
+        .pos_y = 5
+    };
+
+    printf("\e[2J");
+    load_level(&state);
+
+    clock_t start, end;
+
+    while (!exit_loop) {
+        start = clock();
+
+        read_input(&state);
+        update(&state);
+        if (state.won || state.dead) {
+            print_end_message(&state);
+            break;
+        }
+
+        render(&state);
+
+        memcpy(state.old_screen, state.screen, sizeof(state.screen));
+
+        end = clock();
+
+        double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
+        if (time_taken > SPEED) continue;
+
+        req.tv_sec = 0;
+        req.tv_nsec = (SPEED - time_taken) * 1000000000; // 0.1 seconds
+        nanosleep(&req, &rem);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
