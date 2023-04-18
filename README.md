@@ -1,5 +1,15 @@
 # Linux Terminal Game
-Code created during recording the [Linux Terminal Game from Scratch](https://youtu.be/WvSOSyi5lWY) video series.
+Code created during recording the [Linux Terminal Game from Scratch](https://www.youtube.com/playlist?list=PLRWoC1qZt_WeCwCUEWxsSIpqfgg2qd9wD) video series.
+
+# Videos
+[Linux Terminal Game from Scratch I - Termios, ANSI Escape Codes](https://youtu.be/WvSOSyi5lWY)
+
+[Linux Terminal Game from Scratch II - Game Loop, Rendering, Level Loading](https://youtu.be/D9SppXPZLU0)
+
+[Linux Terminal Game from Scratch III - Gameplay](https://youtu.be/z-yqFVX_j_U)
+
+[Linux Terminal Game from Scratch IV - Tests, Rendering, Colors, Animations](https://youtu.be/qMbB2wVVw-I)
+
 
 # Requirements
 Just a C compiler :)
