@@ -42,8 +42,8 @@ void reset_terminal() {
 
 void configure_terminal() {
     tcgetattr(STDIN_FILENO, &old_termios);
-	new_termios = old_termios; // save it to be able to reset on exit
-    
+    new_termios = old_termios; // save it to be able to reset on exit
+
     new_termios.c_lflag &= ~(ICANON | ECHO); // turn off echo + non-canonical mode
     new_termios.c_cc[VMIN] = 0;
     new_termios.c_cc[VTIME] = 0;
@@ -62,33 +62,33 @@ void signal_handler(__attribute__((unused)) int signum) {
 
 int read_key(char* buf, int k) {
     if (buf[k] == '\033' && buf[k + 1] == '[') {
-		switch (buf[k + 2]) {
-			case 'A': return 1; // UP
-			case 'B': return 2; // DOWN
-			case 'C': return 3; // RIGHT
-			case 'D': return 4; // LEFT
-		}
-	}
-	return 0;
+        switch (buf[k + 2]) {
+            case 'A': return 1; // UP
+            case 'B': return 2; // DOWN
+            case 'C': return 3; // RIGHT
+            case 'D': return 4; // LEFT
+        }
+    }
+    return 0;
 }
 
 void read_input(GameState* state) {
-   	char buf[4096]; // maximum input buffer
-	int n = read(STDIN_FILENO, buf, sizeof(buf));
-	int final_key = 0;
+    char buf[4096]; // maximum input buffer
+    int n = read(STDIN_FILENO, buf, sizeof(buf));
+    int final_key = 0;
     // it's okay if we miss some keys
     // we will correct it on next frame
-	for (int k = 0; k <= n - 3; k += 3) {
-		int key = read_key(buf, k);
-		if (key == 0) continue;
-		final_key = key;
-	}
+    for (int k = 0; k <= n - 3; k += 3) {
+        int key = read_key(buf, k);
+        if (key == 0) continue;
+        final_key = key;
+    }
     state->key = final_key;
 }
 
 void handle_player(GameState* state) {
-	switch (state->key) {
-	case 1:
+    switch (state->key) {
+    case 1:
         switch (state->screen[state->pos_y - 1][state->pos_x]) {
             case '$':
                 state->gems_collected++; // fallthrough
@@ -386,8 +386,8 @@ int main() {
 
     signal(SIGINT, signal_handler);
 
-   	struct timespec req = {};
-	struct timespec rem = {};
+    struct timespec req = {};
+    struct timespec rem = {};
 
     GameState state = {
         .pos_x = 5,
