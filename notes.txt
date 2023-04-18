@@ -90,7 +90,7 @@ Rules:
 - Rocks/Gems fall down if there is space below them
 - Rocks/Gems falling on Player ends the game -> Lose Scenario
 - Player entering Exit ends the game -> Win scenario
-- Player can't go though Wall, Rock
+- Player can't go through Wall, Rock
 - Player can collect Gems
 
 Composite Rules:
