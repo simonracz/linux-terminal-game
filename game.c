@@ -247,6 +247,7 @@ void handle_falling_rocks_gems(GameState* state, int x, int y) {
     if (state->screen[y + 1][x] == 'o' || state->screen[y + 1][x] == 'S') return;
     if (state->screen[y + 1][x] == '@') {
         state->dead = 1;
+        return;
     }
     if (gem) {
         state->screen[y][x] = '$';
@@ -293,7 +294,7 @@ void render(GameState* state) {
         for (int i = 0; i < MAX_X; ++i) {
             char c = state->screen[j][i];
             if (c == '$' || c == 'S') {
-                int l = ((state->count + j + 3 * i) % 16) / 8;
+                int l = ((state->count + 5 * j + 7 * i) % 16) / 8;
                 printf("\e[%d;%dH", j + 1, i + 1); // move cursor
                 if (l == 0) {
                     printf("\e[48;2;10;10;40m\e[38;2;153;51;255m$");
@@ -377,7 +378,7 @@ void print_end_message(GameState* state) {
 }
 
 // Lower is faster
-#define SPEED 0.1
+#define SPEED 0.08
 
 #ifndef RUN_TESTS
 
