@@ -378,7 +378,7 @@ void print_end_message(GameState* state) {
 }
 
 // Lower is faster
-#define SPEED 0.08
+#define SPEED 0.1
 
 #ifndef RUN_TESTS
 
